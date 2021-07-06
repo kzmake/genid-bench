@@ -5,13 +5,17 @@ import (
 	"testing"
 	"time"
 
+	snowflake "github.com/bwmarrin/snowflake"
+	sandflake "github.com/celrenheit/sandflake"
 	uuiddraft "github.com/coding-socks/uuiddraft"
 	gofrs_uuid "github.com/gofrs/uuid"
 	google_uuid "github.com/google/uuid"
 	shortuuid "github.com/lithammer/shortuuid/v3"
+	nanoid "github.com/matoous/go-nanoid/v2"
 	ulid "github.com/oklog/ulid/v2"
 	xid "github.com/rs/xid"
-	snowflake "github.com/sony/sonyflake"
+	ksuid "github.com/segmentio/ksuid"
+	sonyflake "github.com/sony/sonyflake"
 	hashid "github.com/speps/go-hashids/v2"
 	mysql "gorm.io/driver/mysql"
 	gorm "gorm.io/gorm"
@@ -28,45 +32,87 @@ func benchmark(b *testing.B, f func()) {
 	}
 }
 
-func BenchmarkUUIDv1NewString(b *testing.B) {
+func BenchmarkUUIDv1(b *testing.B) {
 	benchmark(b, func() {
 		_ = google_uuid.Must(google_uuid.NewUUID()).String()
 	})
 }
-func BenchmarkUUIDv3NewString(b *testing.B) {
+func BenchmarkUUIDv3(b *testing.B) {
 	benchmark(b, func() {
 		_ = gofrs_uuid.NewV3(gofrs_uuid.NamespaceDNS, "example.com").String()
 	})
 }
 
-func BenchmarkUUIDv4NewString(b *testing.B) {
+func BenchmarkUUIDv4(b *testing.B) {
 	benchmark(b, func() {
 		_ = google_uuid.New().String()
 	})
 }
 
-func BenchmarkUUIDv5NewString(b *testing.B) {
+func BenchmarkUUIDv5(b *testing.B) {
 	benchmark(b, func() {
 		_ = gofrs_uuid.NewV5(gofrs_uuid.NamespaceDNS, "example.com").String()
 	})
 }
 
-func BenchmarkUUIDv6NewString(b *testing.B) {
+func BenchmarkUUIDv6(b *testing.B) {
 	benchmark(b, func() {
 		_ = uuiddraft.Must(uuiddraft.NewV6()).String()
 	})
 }
 
-func BenchmarkUUIDv7NewString(b *testing.B) {
+func BenchmarkUUIDv7(b *testing.B) {
 	benchmark(b, func() {
 		_ = uuiddraft.Must(uuiddraft.NewV7()).String()
 	})
 }
 
-func BenchmarkSnowFlakeNewUint64(b *testing.B) {
-	var st snowflake.Settings
+func BenchmarkULID(b *testing.B) {
+	benchmark(b, func() {
+		_ = ulid.MustNew(uint64(time.Now().UnixNano()/1000000), crand.Reader).String()
+	})
+}
+
+func BenchmarkXID(b *testing.B) {
+	benchmark(b, func() {
+		_ = xid.New().String()
+	})
+}
+
+func BenchmarkNanoID(b *testing.B) {
+	benchmark(b, func() {
+		_, err := nanoid.New()
+		if err != nil {
+			panic(err)
+		}
+	})
+}
+
+func BenchmarkKSUID(b *testing.B) {
+	benchmark(b, func() {
+		_ = ksuid.New().String()
+	})
+}
+
+func BenchmarkSandflake(b *testing.B) {
+	var g sandflake.Generator
+	benchmark(b, func() {
+		_ = g.Next().String()
+	})
+}
+
+func BenchmarkSnowflake(b *testing.B) {
+	n, _ := snowflake.NewNode(255)
+	benchmark(b, func() {
+
+		_ = n.Generate().String()
+	})
+}
+
+func BenchmarkSonyflake(b *testing.B) {
+	var st sonyflake.Settings
 	st.StartTime = time.Now()
-	sf := snowflake.NewSonyflake(st)
+	sf := sonyflake.NewSonyflake(st)
 
 	benchmark(b, func() {
 		_, err := sf.NextID()
@@ -76,25 +122,13 @@ func BenchmarkSnowFlakeNewUint64(b *testing.B) {
 	})
 }
 
-func BenchmarkULIDNewString(b *testing.B) {
-	benchmark(b, func() {
-		_ = ulid.MustNew(uint64(time.Now().UnixNano()/1000000), crand.Reader).String()
-	})
-}
-
-func BenchmarkXIDNewString(b *testing.B) {
-	benchmark(b, func() {
-		_ = xid.New().String()
-	})
-}
-
-func BenchmarkShortUUIDNewString(b *testing.B) {
+func BenchmarkShortUUID(b *testing.B) {
 	benchmark(b, func() {
 		_ = shortuuid.New()
 	})
 }
 
-func BenchmarkHashIDEncodeString(b *testing.B) {
+func BenchmarkHashID(b *testing.B) {
 	hid, _ := hashid.New()
 
 	benchmark(b, func() {
@@ -106,7 +140,7 @@ func BenchmarkHashIDEncodeString(b *testing.B) {
 }
 
 // docker run --rm -d --name mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=pass -e MYSQL_DATABASE=test mysql:latest
-func BenchmarkAutoIncrementString(b *testing.B) {
+func BenchmarkAutoIncrement(b *testing.B) {
 	type Resource struct {
 		ID int `gorm:"type:int AUTO_INCREMENT"`
 	}
@@ -125,7 +159,7 @@ func BenchmarkAutoIncrementString(b *testing.B) {
 }
 
 // docker run --rm -d --name mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=pass -e MYSQL_DATABASE=test mysql:latest
-func BenchmarkAutoIncrementWithHashIDEncodeString(b *testing.B) {
+func BenchmarkAutoIncrementWithHashID(b *testing.B) {
 	type Resource struct {
 		ID int `gorm:"type:int AUTO_INCREMENT"`
 	}
